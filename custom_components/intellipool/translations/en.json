@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "IntelliPool Setup",
+        "description": "Enter your IntelliPool API credentials. You can find these in the IntelliPool app or from your pool installer.",
+        "data": {
+          "installation_id": "Installation ID",
+          "api_key": "API Key",
+          "name": "Pool Name"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to IntelliPool API",
+      "invalid_auth": "Invalid API key or installation ID",
+      "no_data": "Connected but received no data - check installation ID",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This installation is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "water_temp": {
+        "name": "Water Temperature"
+      },
+      "air_temp": {
+        "name": "Air Temperature"
+      },
+      "ph": {
+        "name": "pH"
+      },
+      "orp": {
+        "name": "ORP"
+      },
+      "conductivity": {
+        "name": "Conductivity"
+      }
+    },
+    "binary_sensor": {
+      "filtration": {
+        "name": "Filtration"
+      },
+      "heating": {
+        "name": "Heating"
+      },
+      "lighting": {
+        "name": "Lighting"
+      },
+      "aux1": {
+        "name": "Auxiliary 1"
+      }
+    }
+  }
+}
