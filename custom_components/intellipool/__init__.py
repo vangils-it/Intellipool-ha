@@ -14,11 +14,7 @@ from .coordinator import IntelliPoolDataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
-# Base platforms (always loaded)
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
-
-# Control platforms (loaded only if session_token is provided)
-CONTROL_PLATFORMS: list[Platform] = [Platform.SWITCH]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.SWITCH]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -28,47 +24,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session_token = entry.data.get(CONF_SESSION_TOKEN)
 
     session = async_get_clientsession(hass)
-    api = IntelliPoolApi(installation_id, api_key, session, session_token)
-
-    coordinator = IntelliPoolDataUpdateCoordinator(hass, api, installation_id)
-    await coordinator.async_config_entry_first_refresh()
+    api = IntelliPoolApi(
+        installation_id, 
+        api_key, 
+        session,
+        session_token=session_token,
+    )
 
     # If we have a session token, try to connect WebSocket for control
     if session_token:
         try:
-            connected = await api.ws_connect()
-            if connected:
-                _LOGGER.info("WebSocket connected - control features enabled")
-            else:
-                _LOGGER.warning("WebSocket connection failed - control features disabled")
+            await api.ws_connect()
+            _LOGGER.info("WebSocket connected - control features enabled")
         except Exception as err:
-            _LOGGER.warning("WebSocket connection error: %s - control features disabled", err)
+            _LOGGER.warning("WebSocket connection failed, control features disabled: %s", err)
+
+    coordinator = IntelliPoolDataUpdateCoordinator(hass, api, installation_id)
+    await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # Determine which platforms to load
-    platforms_to_load = list(PLATFORMS)
-    if session_token and api.access_levels:
-        platforms_to_load.extend(CONTROL_PLATFORMS)
-        _LOGGER.info("Loading control platforms (switches)")
-
-    await hass.config_entries.async_forward_entry_setups(entry, platforms_to_load)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Determine which platforms were loaded
-    session_token = entry.data.get(CONF_SESSION_TOKEN)
-    platforms_to_unload = list(PLATFORMS)
-    if session_token:
-        platforms_to_unload.extend(CONTROL_PLATFORMS)
-
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, platforms_to_unload):
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         coordinator = hass.data[DOMAIN].pop(entry.entry_id)
-        # Close WebSocket connection
         await coordinator.api.close()
 
     return unload_ok
