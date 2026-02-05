@@ -3,10 +3,11 @@
     "step": {
       "user": {
         "title": "IntelliPool Setup",
-        "description": "Enter your IntelliPool API credentials. You can find these in the IntelliPool app or from your pool installer.",
+        "description": "Enter your IntelliPool API credentials. You can find these in the IntelliPool app or from your pool installer.\n\nFor control features (lights, etc.), you also need the Session Token from the app.",
         "data": {
           "installation_id": "Installation ID",
           "api_key": "API Key",
+          "session_token": "Session Token (optional, enables control)",
           "name": "Pool Name"
         }
       }
@@ -45,7 +46,9 @@
       },
       "heating": {
         "name": "Heating"
-      },
+      }
+    },
+    "switch": {
       "lighting": {
         "name": "Lighting"
       },

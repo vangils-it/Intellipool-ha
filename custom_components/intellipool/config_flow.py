@@ -11,7 +11,7 @@ from homeassistant.const import CONF_NAME
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IntelliPoolApi, IntelliPoolApiError, IntelliPoolAuthError
-from .const import CONF_API_KEY, CONF_INSTALLATION_ID, DOMAIN
+from .const import CONF_API_KEY, CONF_INSTALLATION_ID, CONF_SESSION_TOKEN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_INSTALLATION_ID): str,
         vol.Required(CONF_API_KEY): str,
+        vol.Optional(CONF_SESSION_TOKEN): str,
         vol.Optional(CONF_NAME, default="Pool"): str,
     }
 )
@@ -53,13 +54,19 @@ class IntelliPoolConfigFlow(ConfigFlow, domain=DOMAIN):
                 if not data:
                     errors["base"] = "no_data"
                 else:
+                    entry_data = {
+                        CONF_INSTALLATION_ID: installation_id,
+                        CONF_API_KEY: api_key,
+                        CONF_NAME: name,
+                    }
+                    # Add session token if provided (enables control features)
+                    session_token = user_input.get(CONF_SESSION_TOKEN)
+                    if session_token:
+                        entry_data[CONF_SESSION_TOKEN] = session_token
+                    
                     return self.async_create_entry(
                         title=name,
-                        data={
-                            CONF_INSTALLATION_ID: installation_id,
-                            CONF_API_KEY: api_key,
-                            CONF_NAME: name,
-                        },
+                        data=entry_data,
                     )
             except IntelliPoolAuthError:
                 errors["base"] = "invalid_auth"

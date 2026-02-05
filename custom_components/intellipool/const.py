@@ -8,10 +8,12 @@ DOMAIN: Final = "intellipool"
 # API Configuration
 API_BASE_URL: Final = "https://api.domotique-piscine.eu"
 API_ENDPOINT: Final = "/api/install/{installation_id}/probes"
+WS_ENDPOINT: Final = "wss://api.domotique-piscine.eu/websocket"
 
 # Config keys
 CONF_INSTALLATION_ID: Final = "installation_id"
 CONF_API_KEY: Final = "api_key"
+CONF_SESSION_TOKEN: Final = "session_token"
 
 # Update interval (seconds)
 DEFAULT_SCAN_INTERVAL: Final = 60
@@ -55,7 +57,7 @@ SENSOR_TYPES: Final = {
     },
 }
 
-# Binary sensor type mappings
+# Binary sensor type mappings (read-only status)
 BINARY_SENSOR_TYPES: Final = {
     "OMEOTECH_FLAG_FILTRATION": {
         "name": "Filtration",
@@ -67,14 +69,25 @@ BINARY_SENSOR_TYPES: Final = {
         "device_class": "heat",
         "icon": "mdi:fire",
     },
+}
+
+# Switch type mappings (controllable)
+SWITCH_TYPES: Final = {
     "OMEOTECH_FLAG_LIGHTING": {
         "name": "Lighting",
-        "device_class": "light",
         "icon": "mdi:lightbulb",
     },
     "OMEOTECH_FLAG_AUX1": {
         "name": "Auxiliary 1",
-        "device_class": "running",
         "icon": "mdi:power",
+    },
+}
+
+# Light entity for lighting with color support
+LIGHT_TYPES: Final = {
+    "OMEOTECH_FLAG_LIGHTING": {
+        "name": "Pool Light",
+        "icon": "mdi:lightbulb",
+        "color_key": "LIGHTING_COLOR",
     },
 }
