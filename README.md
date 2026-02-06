@@ -4,18 +4,20 @@ A custom Home Assistant integration for Pentair IntelliPool pool automation syst
 
 ## Features
 
-- **Sensors:**
-  - Water Temperature
-  - Air Temperature
-  - pH Level
-  - ORP (Redox)
-  - Conductivity
+### Sensors (Read-only)
+- Water Temperature
+- Air Temperature
+- pH Level
+- ORP (Redox)
+- Conductivity
 
-- **Binary Sensors:**
-  - Filtration Status
-  - Heating Status
-  - Lighting Status
-  - Auxiliary 1 Status
+### Binary Sensors (Read-only)
+- Filtration Status
+- Heating Status
+
+### Switches (Controllable - requires Session Token)
+- Lighting
+- Auxiliary 1
 
 ## Installation
 
@@ -42,11 +44,18 @@ A custom Home Assistant integration for Pentair IntelliPool pool automation syst
 4. Enter your credentials:
    - **Installation ID**: Your IntelliPool installation ID
    - **API Key**: Your IntelliPool API key
+   - **Session Token**: (Optional) Required for control features
    - **Pool Name**: A friendly name for your pool (optional)
 
 ## Finding Your Credentials
 
 You can find your Installation ID and API Key in the IntelliPool mobile app or by contacting your pool installer.
+
+### Session Token (for control features)
+
+The session token is required to control your pool equipment (lights, etc.). You can obtain it by:
+1. Using a network proxy (like mitmproxy) to capture traffic from the IntelliPool app
+2. Look for the `sessionToken` field in the WebSocket messages
 
 ## Entities Created
 
@@ -61,8 +70,8 @@ After setup, the following entities will be created:
 | `sensor.intellipool_conductivity` | Sensor | Conductivity in µS |
 | `binary_sensor.intellipool_filtration` | Binary Sensor | Filtration pump status |
 | `binary_sensor.intellipool_heating` | Binary Sensor | Heater status |
-| `binary_sensor.intellipool_lighting` | Binary Sensor | Pool lights status |
-| `binary_sensor.intellipool_auxiliary_1` | Binary Sensor | Auxiliary output 1 status |
+| `switch.intellipool_lighting` | Switch | Pool lights (on/off) |
+| `switch.intellipool_auxiliary_1` | Switch | Auxiliary output 1 |
 
 ## Update Interval
 
@@ -70,7 +79,8 @@ The integration polls the IntelliPool API every 60 seconds by default.
 
 ## Known Limitations
 
-- This is a **read-only** integration - you cannot control the pool equipment from Home Assistant (yet)
+- Control features require a valid session token
+- Session tokens may expire and need to be refreshed
 - Requires an active internet connection to the IntelliPool cloud
 
 ## Troubleshooting
@@ -82,6 +92,21 @@ The integration polls the IntelliPool API every 60 seconds by default.
 ### "Failed to connect"
 - Check your internet connection
 - The IntelliPool API may be temporarily unavailable
+
+### Switches not appearing
+- Make sure you provided a valid session token
+- Check the Home Assistant logs for WebSocket connection errors
+
+## Changelog
+
+### v1.1.0
+- Added WebSocket support for control features
+- Added switches for lighting and auxiliary 1
+- Added session token configuration option
+
+### v1.0.0
+- Initial release
+- Read-only sensors and binary sensors
 
 ## Credits
 
