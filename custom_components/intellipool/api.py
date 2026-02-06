@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import time
@@ -10,7 +11,15 @@ from typing import Any, Callable
 
 import aiohttp
 
-from .const import API_BASE_URL, API_ENDPOINT, WS_ENDPOINT
+from .const import (
+    API_AUTH_ENDPOINT,
+    API_BASE_URL,
+    API_ENDPOINT,
+    API_INSTALL_LIST_ENDPOINT,
+    APP_API_KEY,
+    APP_PRIVATE_KEY,
+    WS_ENDPOINT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,14 +37,14 @@ class IntelliPoolApi:
 
     def __init__(
         self,
-        installation_id: str,
-        api_key: str,
+        installation_id: str | None = None,
+        api_key: str | None = None,
         session: aiohttp.ClientSession | None = None,
         session_token: str | None = None,
     ) -> None:
         """Initialize the API client."""
-        self._installation_id = installation_id
-        self._api_key = api_key
+        self._installation_id = installation_id or ""
+        self._api_key = api_key or APP_API_KEY
         self._session = session
         self._session_token = session_token
         self._close_session = False
@@ -137,19 +146,97 @@ class IntelliPoolApi:
 
     # ========== WebSocket Methods ==========
 
-    def _generate_signature(self, timestamp: int) -> str:
-        """Generate the signature for WebSocket authentication.
+
+    def _generate_signature(self, params: dict[str, Any]) -> str:
+        """Generate the HMAC-SHA1 signature for authentication.
         
-        The signature appears to be SHA1(apiKey + sessionToken + timestamp).
-        This may need adjustment based on actual implementation.
+        Logic:
+        1. Lowercase keys
+        2. Sort by key
+        3. Concatenate key+value
+        4. HMAC-SHA1 using APP_PRIVATE_KEY
         """
-        if not self._session_token:
-            raise IntelliPoolAuthError("Session token required for WebSocket")
+        pairs = []
+        for k, v in params.items():
+            pairs.append((k.lower(), str(v)))
+            
+        pairs.sort(key=lambda x: x[0])
         
-        # Try different signature generation methods
-        # Method 1: SHA1(sessionToken + timestamp)
-        data = f"{self._session_token}{timestamp}"
-        return hashlib.sha1(data.encode()).hexdigest()
+        data_str = ""
+        for k, v in pairs:
+            data_str += k + v
+            
+        secret = APP_PRIVATE_KEY.encode('utf-8')
+        return hmac.new(secret, data_str.encode('utf-8'), hashlib.sha1).hexdigest()
+
+    async def authenticate(self, username: str, password: str) -> None:
+        """Authenticate with username and password to get session token."""
+        session = await self._get_session()
+        
+        timestamp = int(time.time() * 1000)
+        params = {
+            "apiKey": self._api_key,
+            "lang": "en",
+            "password": password,
+            "softVersion": "1.4.0",
+            "timestamp": timestamp,
+            "username": username,
+        }
+        
+        signature = self._generate_signature(params)
+        
+        # The params are sent in query string but it's a POST
+        query_params = params.copy()
+        query_params["signature"] = signature
+        
+        url = f"{API_BASE_URL}{API_AUTH_ENDPOINT}"
+        
+        try:
+            async with session.post(url, params=query_params, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status != 200:
+                    raise IntelliPoolAuthError(f"Authentication failed: {response.status}")
+                
+                data = await response.json()
+                if data.get("status") != "success":
+                    raise IntelliPoolAuthError(f"Authentication failed: {data.get('status')}")
+                
+                self._session_token = data.get("token")
+                
+        except aiohttp.ClientError as err:
+            raise IntelliPoolApiError(f"Connection error: {err}") from err
+
+    async def get_installations(self) -> list[dict[str, Any]]:
+        """Get list of available installations."""
+        if not self._session_token:
+            raise IntelliPoolAuthError("Not authenticated")
+            
+        session = await self._get_session()
+        timestamp = int(time.time() * 1000)
+        
+        params = {
+            "apiKey": self._api_key,
+            "sessionToken": self._session_token,
+            "timestamp": timestamp,
+        }
+        
+        signature = self._generate_signature(params)
+        params["signature"] = signature
+        
+        url = f"{API_BASE_URL}{API_INSTALL_LIST_ENDPOINT.format(session_token=self._session_token)}"
+        
+        try:
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                if response.status != 200:
+                    raise IntelliPoolApiError(f"Failed to get installations: {response.status}")
+                
+                data = await response.json()
+                if data.get("status") != "success":
+                    raise IntelliPoolApiError("Failed to get installations")
+                
+                return data.get("installList", [])
+                
+        except aiohttp.ClientError as err:
+            raise IntelliPoolApiError(f"Connection error: {err}") from err
 
     def _next_message_id(self) -> int:
         """Get the next message ID."""
@@ -162,6 +249,8 @@ class IntelliPoolApi:
             return True
 
         if not self._session_token:
+            # If no session token, we can't connect via WS
+            # We assume authenticate() has been called or session_token passed in init
             raise IntelliPoolAuthError("Session token required for WebSocket connection")
 
         session = await self._get_session()
@@ -180,11 +269,20 @@ class IntelliPoolApi:
             
             # Send authentication message
             timestamp = int(time.time() * 1000)
-            signature = self._generate_signature(timestamp)
+            msg_id = self._next_message_id()
+            
+            # Params for signature generation
+            params = {
+                "id": msg_id,
+                "apiKey": self._api_key,
+                "sessionToken": self._session_token,
+                "timestamp": timestamp,
+            }
+            signature = self._generate_signature(params)
             
             auth_msg = {
-                "id": self._next_message_id(),
-                "apiKey": "intellipool-webapp",
+                "id": msg_id,
+                "apiKey": self._api_key,
                 "sessionToken": self._session_token,
                 "timestamp": timestamp,
                 "signature": signature,

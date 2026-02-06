@@ -7,13 +7,24 @@ DOMAIN: Final = "intellipool"
 
 # API Configuration
 API_BASE_URL: Final = "https://api.domotique-piscine.eu"
+# API Configuration
+API_BASE_URL: Final = "https://api.domotique-piscine.eu"
 API_ENDPOINT: Final = "/api/install/{installation_id}/probes"
+API_AUTH_ENDPOINT: Final = "/api/account/authenticate"
+API_INSTALL_LIST_ENDPOINT: Final = "/api/account/{session_token}/installList"
 WS_ENDPOINT: Final = "wss://api.domotique-piscine.eu/websocket"
+
+# API Credentials
+# Extracted from app
+APP_API_KEY: Final = "intellipool-webapp"
+APP_PRIVATE_KEY: Final = "ROHAPVSthlpqdYeT3SBaKfLG4SWc49E7oqolxL0bsFj6egEGbpIEv1bsFSRSgPOh"
 
 # Config keys
 CONF_INSTALLATION_ID: Final = "installation_id"
 CONF_API_KEY: Final = "api_key"
 CONF_SESSION_TOKEN: Final = "session_token"
+CONF_USERNAME: Final = "username"
+CONF_PASSWORD: Final = "password"
 
 # Update interval (seconds)
 DEFAULT_SCAN_INTERVAL: Final = 60
